@@ -2,13 +2,17 @@ use confy;
 use dialoguer::Input;
 use serde_derive::{Deserialize, Serialize};
 
+use hyper::{Client, Request, Method, Body};
+use hyper::body::HttpBody;
+
 #[derive(Default, Debug, Serialize, Deserialize)]
 struct Configuration {
     server_url: String,
     api_key: String,
 }
 
-fn main() {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let cfg: Configuration = confy::load("octoprint-client").expect("Configuration loading failed");
     dbg!(&cfg);
 
@@ -31,4 +35,18 @@ fn main() {
 
         confy::store("octoprint-client", new_config).expect("Failed to save configuration");
     }
+
+
+    let req = Request::builder()
+        .method(Method::GET)
+        .uri(cfg.server_url+"/api/server")
+        .header("X-Api-Key", cfg.api_key)
+        .body(Body::empty())
+        .expect("Failed to create request");
+
+    let client = Client::new();
+    let mut resp = client.request(req).await.expect("Request failed");
+    dbg!(resp.body_mut().data().await.unwrap());
+
+    Ok(())
 }
