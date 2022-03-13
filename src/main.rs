@@ -31,8 +31,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     let opc = OctoPrintClient::from_config(cfg);
 
-    dbg!(opc.fetch_url("job").await);
-    dbg!(opc.fetch_url("server").await);
+    dbg!(opc.get_server_info().await);
+
+    dbg!(opc.get_current_job().await);
 
     Ok(())
 }
