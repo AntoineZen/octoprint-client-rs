@@ -58,7 +58,7 @@ pub struct JobInformation {
     pub job: Job,
     pub progress: Progress,
     pub state: String,
-    pub error: String,
+    pub error: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]
