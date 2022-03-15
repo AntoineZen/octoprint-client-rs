@@ -5,6 +5,9 @@ use hyper::body::Buf;
 use hyper::client::ResponseFuture;
 use hyper::{Body, Client, Method, Request};
 
+// type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
+use anyhow::Result;
+
 #[derive(Default, Debug, Serialize, Deserialize)]
 pub struct Configuration {
     pub server_url: String,
@@ -72,7 +75,7 @@ impl OctoPrintClient {
         OctoPrintClient { config }
     }
 
-    fn fetch_url(&self, endpoint: &str) -> ResponseFuture {
+    fn fetch_url(&self, endpoint: &str) -> Result<ResponseFuture> {
         let full_uri = self.config.server_url.clone() + "/api/" + endpoint;
         let req = Request::builder()
             .method(Method::GET)
@@ -82,22 +85,20 @@ impl OctoPrintClient {
             .expect("Failed to create request");
 
         let client = Client::new();
-        client.request(req) //
-
-        //hyper::body::aggregate(resp.body_mut()).await.unwrap()
+        Ok(client.request(req))
     }
 
-    pub async fn get_current_job(&self) -> JobInformation {
-        let mut resp = self.fetch_url("job").await.expect("Request failed");
-        let json_doc = hyper::body::aggregate(resp.body_mut()).await.unwrap();
+    pub async fn get_current_job(&self) -> Result<JobInformation> {
+        let mut resp = self.fetch_url("job")?.await?;
+        let json_doc = hyper::body::aggregate(resp.body_mut()).await?;
 
-        serde_json::from_reader(json_doc.reader()).expect("Failed to deseralize")
+        Ok(serde_json::from_reader(json_doc.reader())?)
     }
 
-    pub async fn get_server_info(&self) -> ServerInfo {
-        let mut resp = self.fetch_url("server").await.expect("Request failed");
-        let json_doc = hyper::body::aggregate(resp.body_mut()).await.unwrap();
+    pub async fn get_server_info(&self) -> Result<ServerInfo> {
+        let mut resp = self.fetch_url("server")?.await?;
+        let json_doc = hyper::body::aggregate(resp.body_mut()).await?;
 
-        serde_json::from_reader(json_doc.reader()).expect("Failed to deseralize")
+        Ok(serde_json::from_reader(json_doc.reader())?)
     }
 }

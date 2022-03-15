@@ -1,3 +1,4 @@
+use anyhow::{Context, Result};
 use confy;
 use dialoguer::Input;
 
@@ -5,7 +6,7 @@ mod octoprintclient;
 use octoprintclient::{Configuration, OctoPrintClient};
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+async fn main() -> Result<()> {
     let cfg: Configuration = confy::load("octoprint-client").expect("Configuration loading failed");
     //dbg!(&cfg);
 
@@ -31,9 +32,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     let opc = OctoPrintClient::from_config(cfg);
 
-    dbg!(opc.get_server_info().await);
+    let server = opc
+        .get_server_info()
+        .await
+        .with_context(|| "Get server info")?;
+    println!("Connected to Octoprint version {}", server.version);
 
-    dbg!(opc.get_current_job().await);
+    let job = opc
+        .get_current_job()
+        .await
+        .with_context(|| "Getting job state")?;
+
+    //dbg!(&job);
+
+    if let Some(completion) = job.progress.completion {
+        println!("{}done", completion);
+    }
+
+    println!("State : \"{}\"", job.state);
+
+    if let Some(err) = job.error {
+        eprintln!("ERROR: {}", err);
+    }
 
     Ok(())
 }
