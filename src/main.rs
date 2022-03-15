@@ -46,13 +46,17 @@ async fn main() -> Result<()> {
     //dbg!(&job);
 
     if let Some(completion) = job.progress.completion {
-        println!("{}done", completion);
+        println!("Progress: {:2.1}% done", completion);
     }
 
     println!("State : \"{}\"", job.state);
 
     if let Some(err) = job.error {
         eprintln!("ERROR: {}", err);
+    }
+
+    if let Some(path) = job.job.file.path {
+        println!("File : {}", path);
     }
 
     Ok(())

@@ -20,7 +20,7 @@ pub struct OctoPrintClient {
 
 #[derive(Deserialize, Debug)]
 pub struct File {
-    pub date: Option<String>,
+    pub date: Option<u64>,
     pub disply: Option<String>,
     pub name: Option<String>,
     pub origin: Option<String>,
@@ -29,9 +29,14 @@ pub struct File {
 }
 
 #[derive(Deserialize, Debug)]
-pub struct Filament {
+pub struct Tool {
     pub length: f32,
-    pub volue: f32,
+    pub volume: f32,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct Filament {
+    pub tool0: Option<Tool>,
 }
 
 #[derive(Deserialize, Debug)]
