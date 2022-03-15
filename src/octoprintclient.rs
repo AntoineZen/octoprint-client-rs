@@ -56,7 +56,7 @@ pub struct Progress {
     #[serde(rename = "printTime")]
     pub print_time: Option<u32>,
     #[serde(rename = "printTimeLeft")]
-    pub print_time_left: Option<u32>,
+    pub print_time_left: Option<i64>,
     #[serde(rename = "printTimeLeftOrigin")]
     pub print_time_left_origin: Option<String>,
 }

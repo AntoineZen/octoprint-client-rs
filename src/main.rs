@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use confy;
 use dialoguer::Input;
+use time_humanize::HumanTime;
 
 mod octoprintclient;
 use octoprintclient::{Configuration, OctoPrintClient};
@@ -44,12 +45,17 @@ async fn main() -> Result<()> {
         .with_context(|| "Getting job state")?;
 
     //dbg!(&job);
-
-    if let Some(completion) = job.progress.completion {
-        println!("Progress: {:2.1}% done", completion);
-    }
-
     println!("State : \"{}\"", job.state);
+
+    if let (Some(completion), Some(time_left)) =
+        (job.progress.completion, job.progress.print_time_left)
+    {
+        println!(
+            "Progress: {:2.1}% , ends {}",
+            completion,
+            HumanTime::from_seconds(time_left)
+        );
+    }
 
     if let Some(err) = job.error {
         eprintln!("ERROR: {}", err);
