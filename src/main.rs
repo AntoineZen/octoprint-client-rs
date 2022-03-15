@@ -8,7 +8,8 @@ use octoprintclient::{Configuration, OctoPrintClient};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let cfg: Configuration = confy::load("octoprint-client").expect("Configuration loading failed");
+    let cfg: Configuration =
+        confy::load("octoprint-client").context("Configuration loading failed")?;
     //dbg!(&cfg);
 
     if cfg.server_url.is_empty() {
@@ -18,17 +19,12 @@ async fn main() -> Result<()> {
             server_url: "".to_string(),
             api_key: "".to_string(),
         };
-        new_config.server_url = Input::new()
-            .with_prompt("Server URL")
-            .interact_text()
-            .expect("Bad input!");
+        new_config.server_url = Input::new().with_prompt("Server URL").interact_text()?;
 
-        new_config.api_key = Input::new()
-            .with_prompt("API Key")
-            .interact_text()
-            .expect("Bad input!");
+        new_config.api_key = Input::new().with_prompt("API Key").interact_text()?;
 
         confy::store("octoprint-client", new_config).expect("Failed to save configuration");
+        return Ok(());
     }
 
     let opc = OctoPrintClient::from_config(cfg);
