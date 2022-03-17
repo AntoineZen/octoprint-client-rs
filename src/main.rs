@@ -1,6 +1,6 @@
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, anyhow};
 use confy;
-use console::Style;
+use console::{Style};
 use dialoguer::Input;
 use time_humanize::HumanTime;
 mod octoprintclient;
@@ -23,8 +23,16 @@ async fn main() -> Result<()> {
 
         new_config.api_key = Input::new().with_prompt("API Key").interact_text()?;
 
-        confy::store("octoprint-client", new_config).expect("Failed to save configuration");
-        return Ok(());
+        return match OctoPrintClient::from_config(new_config.clone()).get_server_info().await {
+            Ok(info) => {
+                println!("Connected to Octoprint version {}", info.version);
+                confy::store("octoprint-client", new_config).expect("Failed to save configuration");
+                Ok(())
+            },
+            Err(e) => {
+                Err(anyhow!("Connection failed: {}", e))
+            }
+        }
     }
 
     let opc = OctoPrintClient::from_config(cfg);
