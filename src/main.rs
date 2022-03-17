@@ -1,8 +1,8 @@
 use anyhow::{Context, Result};
 use confy;
+use console::Style;
 use dialoguer::Input;
 use time_humanize::HumanTime;
-
 mod octoprintclient;
 use octoprintclient::{Configuration, OctoPrintClient};
 
@@ -41,24 +41,42 @@ async fn main() -> Result<()> {
         .with_context(|| "Getting job state")?;
 
     //dbg!(&job);
-    println!("State : \"{}\"", job.state);
 
+    // Print state
+    let style = if job.state.to_lowercase().contains("error") {
+        Style::new().red().bold()
+    } else if job.state.to_lowercase().contains("printing") {
+        Style::new().green().bold()
+    } else {
+        Style::new().yellow()
+    };
+    println!("State    : {}", style.apply_to(job.state));
+
+    // Print progress and estimate end time
     if let (Some(completion), Some(time_left)) =
         (job.progress.completion, job.progress.print_time_left)
     {
         println!(
-            "Progress: {:2.1}% , ends {}",
+            "Progress : {:2.1}% , ends {}",
             completion,
             HumanTime::from_seconds(time_left)
         );
     }
 
+    // Printe error if reported
     if let Some(err) = job.error {
-        eprintln!("ERROR: {}", err);
+        eprintln!(
+            "{}",
+            Style::new()
+                .red()
+                .bold()
+                .apply_to(format!("ERROR: {}", err))
+        );
     }
 
+    // Print file name
     if let Some(path) = job.job.file.path {
-        println!("File : {}", path);
+        println!("File     : {}", path);
     }
 
     Ok(())
