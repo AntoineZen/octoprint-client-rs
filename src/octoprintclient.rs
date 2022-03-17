@@ -2,7 +2,6 @@ use serde_derive::{Deserialize, Serialize};
 
 use hyper;
 use hyper::body::Buf;
-use hyper::client::ResponseFuture;
 use hyper::{Body, Client, Method, Request, Response, StatusCode};
 
 // type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
