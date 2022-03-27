@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Context, Result};
+use clap::{arg, command, Arg, Command};
 use confy;
-use clap::{arg, command};
 use console::Style;
 use dialoguer::Input;
 use time_humanize::HumanTime;
@@ -17,7 +17,6 @@ async fn main() -> Result<()> {
 
     // if configuration seems emply (i.e. no server URL is configured
     if cfg.server_url.is_empty() {
-
         // Ask the user to create one
         println!("Configuration is empty, let's fix that...");
 
@@ -44,8 +43,14 @@ async fn main() -> Result<()> {
     }
 
     // Parse command line
-    //let matches = command!()
-    //    .get_matches();
+    let matches = command!()
+        .subcommand(
+            Command::new("upload")
+                .about("Upload a file to Octoprint instance")
+                .arg(Arg::new("dir").short('d').help("Specify upload dir"))
+                .arg(Arg::new("file").required(true).help("File to upload")),
+        )
+        .get_matches();
 
     // Create the client object
     let opc = OctoPrintClient::from_config(cfg);
@@ -56,6 +61,17 @@ async fn main() -> Result<()> {
         .with_context(|| "Get server info")?;
     println!("Connected to Octoprint version {}", server.version);
 
+    match matches.subcommand() {
+        Some(("upload", sub_matches)) => {
+            let file_name = sub_matches.value_of("file").unwrap();
+            let file = std::fs::File::open(file_name)?;
+            opc.upload(file).await
+        }
+        _ => print_state(opc).await,
+    }
+}
+
+async fn print_state(opc: OctoPrintClient) -> Result<()> {
     // Get jom information from the server.
     let job = opc
         .get_current_job()
@@ -107,10 +123,16 @@ async fn main() -> Result<()> {
         .with_context(|| "Getting printer state")?;
     if let Some(temperature_state) = printer.temperature {
         if let Some(temperature_data) = temperature_state.tool0 {
-            println!("Extruder : {}°C / {}°C", temperature_data.actual, temperature_data.target);
+            println!(
+                "Extruder : {}°C / {}°C",
+                temperature_data.actual, temperature_data.target
+            );
         }
         if let Some(temperature_data) = temperature_state.bed {
-            println!("Bed      : {}°C / {}°C", temperature_data.actual , temperature_data.target);
+            println!(
+                "Bed      : {}°C / {}°C",
+                temperature_data.actual, temperature_data.target
+            );
         }
     }
 

@@ -3,6 +3,7 @@ name = "octoprint-client"
 version = "0.1.0"
 edition = "2021"
 authors = ["Antoine Zen-Ruffinen <antoine.zen@gmail.com>"]
+description = "An OctoPrint client in Rust."
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

@@ -82,19 +82,19 @@ pub struct ErrorMsg {
 #[derive(Deserialize, Debug)]
 pub struct TemperatureState {
     pub tool0: Option<TemperatureData>,
-    pub bed: Option<TemperatureData>
+    pub bed: Option<TemperatureData>,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct TemperatureData {
     pub actual: f32,
     pub target: f32,
-    pub offset: Option<f32>
+    pub offset: Option<f32>,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct SDState {
-    pub ready: bool
+    pub ready: bool,
 }
 
 #[derive(Deserialize, Debug)]
@@ -122,10 +122,8 @@ pub struct PrinterFlags {
 pub struct PrinterInfo {
     pub temperature: Option<TemperatureState>,
     pub sd: Option<SDState>,
-    pub state: Option<PrinterState>
-
+    pub state: Option<PrinterState>,
 }
-
 
 impl OctoPrintClient {
     pub fn from_config(config: Configuration) -> Self {
@@ -171,5 +169,9 @@ impl OctoPrintClient {
         let json_doc = hyper::body::aggregate(resp.body_mut()).await?;
 
         Ok(serde_json::from_reader(json_doc.reader())?)
+    }
+
+    pub async fn upload(&self, file: std::fs::File) -> Result<()> {
+        Ok(())
     }
 }
