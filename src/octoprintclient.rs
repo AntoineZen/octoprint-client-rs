@@ -79,6 +79,54 @@ pub struct ErrorMsg {
     pub error: String,
 }
 
+#[derive(Deserialize, Debug)]
+pub struct TemperatureState {
+    pub tool0: Option<TemperatureData>,
+    pub bed: Option<TemperatureData>
+}
+
+#[derive(Deserialize, Debug)]
+pub struct TemperatureData {
+    pub actual: f32,
+    pub target: f32,
+    pub offset: Option<f32>
+}
+
+#[derive(Deserialize, Debug)]
+pub struct SDState {
+    pub ready: bool
+}
+
+#[derive(Deserialize, Debug)]
+pub struct PrinterState {
+    text: String,
+    error: Option<String>,
+    flags: PrinterFlags,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct PrinterFlags {
+    pub operational: bool,
+    pub paused: bool,
+    pub printing: bool,
+    pub pausing: bool,
+    pub cancelling: bool,
+    #[serde(rename = "sdReady")]
+    pub sd_ready: bool,
+    pub error: bool,
+    pub ready: bool,
+    #[serde(rename = "closedOrError")]
+    pub closed_on_error: bool,
+}
+#[derive(Deserialize, Debug)]
+pub struct PrinterInfo {
+    pub temperature: Option<TemperatureState>,
+    pub sd: Option<SDState>,
+    pub state: Option<PrinterState>
+
+}
+
+
 impl OctoPrintClient {
     pub fn from_config(config: Configuration) -> Self {
         OctoPrintClient { config }
@@ -113,6 +161,13 @@ impl OctoPrintClient {
     pub async fn get_server_info(&self) -> Result<ServerInfo> {
         let mut resp = self.fetch_url("server").await?;
 
+        let json_doc = hyper::body::aggregate(resp.body_mut()).await?;
+
+        Ok(serde_json::from_reader(json_doc.reader())?)
+    }
+
+    pub async fn get_printer_state(&self) -> Result<PrinterInfo> {
+        let mut resp = self.fetch_url("printer").await?;
         let json_doc = hyper::body::aggregate(resp.body_mut()).await?;
 
         Ok(serde_json::from_reader(json_doc.reader())?)

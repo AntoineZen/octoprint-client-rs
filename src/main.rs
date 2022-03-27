@@ -1,18 +1,24 @@
 use anyhow::{anyhow, Context, Result};
 use confy;
+use clap::{arg, command};
 use console::Style;
 use dialoguer::Input;
 use time_humanize::HumanTime;
+
 mod octoprintclient;
 use octoprintclient::{Configuration, OctoPrintClient};
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // Try to get configuration using "confy"
     let cfg: Configuration =
         confy::load("octoprint-client").context("Configuration loading failed")?;
     //dbg!(&cfg);
 
+    // if configuration seems emply (i.e. no server URL is configured
     if cfg.server_url.is_empty() {
+
+        // Ask the user to create one
         println!("Configuration is empty, let's fix that...");
 
         let mut new_config = Configuration {
@@ -23,6 +29,7 @@ async fn main() -> Result<()> {
 
         new_config.api_key = Input::new().with_prompt("API Key").interact_text()?;
 
+        // Test configuration by getting server info.
         return match OctoPrintClient::from_config(new_config.clone())
             .get_server_info()
             .await
@@ -36,6 +43,11 @@ async fn main() -> Result<()> {
         };
     }
 
+    // Parse command line
+    //let matches = command!()
+    //    .get_matches();
+
+    // Create the client object
     let opc = OctoPrintClient::from_config(cfg);
 
     let server = opc
@@ -44,6 +56,7 @@ async fn main() -> Result<()> {
         .with_context(|| "Get server info")?;
     println!("Connected to Octoprint version {}", server.version);
 
+    // Get jom information from the server.
     let job = opc
         .get_current_job()
         .await
@@ -72,7 +85,7 @@ async fn main() -> Result<()> {
         );
     }
 
-    // Printe error if reported
+    // Print error if reported
     if let Some(err) = job.error {
         eprintln!(
             "{}",
@@ -86,6 +99,19 @@ async fn main() -> Result<()> {
     // Print file name
     if let Some(path) = job.job.file.path {
         println!("File     : {}", path);
+    }
+
+    let printer = opc
+        .get_printer_state()
+        .await
+        .with_context(|| "Getting printer state")?;
+    if let Some(temperature_state) = printer.temperature {
+        if let Some(temperature_data) = temperature_state.tool0 {
+            println!("Extruder : {}°C / {}°C", temperature_data.actual, temperature_data.target);
+        }
+        if let Some(temperature_data) = temperature_state.bed {
+            println!("Bed      : {}°C / {}°C", temperature_data.actual , temperature_data.target);
+        }
     }
 
     Ok(())
