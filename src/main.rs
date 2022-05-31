@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Context, Result};
-use clap::{arg, command, Arg, Command};
+use clap::{command, Arg, Command};
 use confy;
 use console::Style;
 use dialoguer::Input;
@@ -64,8 +64,9 @@ async fn main() -> Result<()> {
     match matches.subcommand() {
         Some(("upload", sub_matches)) => {
             let file_name = sub_matches.value_of("file").unwrap();
+            println!("Uploading \"{}\"", file_name);
             let file = std::fs::File::open(file_name)?;
-            opc.upload(file).await
+            opc.upload(file, file_name).await
         }
         _ => print_state(opc).await,
     }

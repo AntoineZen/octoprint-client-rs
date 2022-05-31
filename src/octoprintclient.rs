@@ -1,3 +1,4 @@
+use std::io::{Read, Write};
 use serde_derive::{Deserialize, Serialize};
 
 use hyper;
@@ -125,6 +126,9 @@ pub struct PrinterInfo {
     pub state: Option<PrinterState>,
 }
 
+
+const BONDARY:  &'static str = "----WebKitFormBoundaryNhILabgMzjj9z3Io";
+
 impl OctoPrintClient {
     pub fn from_config(config: Configuration) -> Self {
         OctoPrintClient { config }
@@ -171,7 +175,47 @@ impl OctoPrintClient {
         Ok(serde_json::from_reader(json_doc.reader())?)
     }
 
-    pub async fn upload(&self, file: std::fs::File) -> Result<()> {
+    pub async fn upload(&self, mut file: std::fs::File, file_name : &str) -> Result<()> {
+
+        let mut payload = Vec::new();
+
+        write!(payload, "--{}\r\n", BONDARY )?;
+        write!(payload, "Content-Disposition: form-data; name=\"file\"; filename=\"{}\"\r\n", file_name)?;
+        write!(payload, "Content-Type: text/x.gcode\r\n")?;
+        write!(payload, "\r\n")?;
+        file.read_to_end(&mut payload)?;
+        write!(payload, "\r\n")?;
+        write!(payload, "{}\r\n", BONDARY )?;
+        write!(payload, "Content-Disposition: form-data; name=\"select\"\r\n")?;
+        write!(payload, "\r\n")?;
+        write!(payload, "true\r\n")?;
+        write!(payload, "\r\n")?;
+        //write!(payload, "{}\r\n", BONDARY )?;
+        //write!(payload, "Content-Disposition: form-data; name=\"print\"\r\n")?;
+        //write!(payload, "\r\n")?;
+        //write!(payload, "false\r\n")?;
+        write!(payload, "--{}--\r\n", BONDARY )?;
+
+        let length = payload.len();
+
+        let req = Request::builder()
+            .method(Method::POST)
+            .uri(self.config.server_url.clone() + "/api/files/local")
+            .header("X-Api-Key", &self.config.api_key)
+            .header("Content-Type", format!("multipart/form-data; boundary={}", BONDARY))
+            .header("Content-Length", length)
+            .body(Body::from(payload))?;
+
+        let client = Client::new();
+        let mut resp = client.request(req).await?;
+        if resp.status() != StatusCode::CREATED {
+            eprintln!("{}", hyper::body::aggregate(resp.body_mut()).await?.remaining());
+            return Err(anyhow!("Server reported error"));
+        }
+
+
+
+
         Ok(())
     }
 }
