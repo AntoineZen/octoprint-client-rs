@@ -185,12 +185,11 @@ impl OctoPrintClient {
         write!(payload, "\r\n")?;
         file.read_to_end(&mut payload)?;
         write!(payload, "\r\n")?;
-        write!(payload, "{}\r\n", BONDARY )?;
+        write!(payload, "--{}\r\n", BONDARY )?;
         write!(payload, "Content-Disposition: form-data; name=\"select\"\r\n")?;
         write!(payload, "\r\n")?;
         write!(payload, "true\r\n")?;
-        write!(payload, "\r\n")?;
-        //write!(payload, "{}\r\n", BONDARY )?;
+        //write!(payload, "--{}\r\n", BONDARY )?;
         //write!(payload, "Content-Disposition: form-data; name=\"print\"\r\n")?;
         //write!(payload, "\r\n")?;
         //write!(payload, "false\r\n")?;
