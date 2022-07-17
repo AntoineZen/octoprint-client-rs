@@ -162,7 +162,6 @@ impl OctoPrintClient {
 
     pub async fn get_server_info(&self) -> Result<ServerInfo> {
         let mut resp = self.fetch_url("server").await?;
-
         let json_doc = hyper::body::aggregate(resp.body_mut()).await?;
 
         Ok(serde_json::from_reader(json_doc.reader())?)
@@ -189,10 +188,10 @@ impl OctoPrintClient {
         write!(payload, "Content-Disposition: form-data; name=\"select\"\r\n")?;
         write!(payload, "\r\n")?;
         write!(payload, "true\r\n")?;
-        //write!(payload, "--{}\r\n", BONDARY )?;
-        //write!(payload, "Content-Disposition: form-data; name=\"print\"\r\n")?;
-        //write!(payload, "\r\n")?;
-        //write!(payload, "false\r\n")?;
+        write!(payload, "--{}\r\n", BONDARY )?;
+        write!(payload, "Content-Disposition: form-data; name=\"print\"\r\n")?;
+        write!(payload, "\r\n")?;
+        write!(payload, "false\r\n")?;
         write!(payload, "--{}--\r\n", BONDARY )?;
 
         let length = payload.len();
@@ -211,8 +210,6 @@ impl OctoPrintClient {
             eprintln!("{}", hyper::body::aggregate(resp.body_mut()).await?.remaining());
             return Err(anyhow!("Server reported error"));
         }
-
-
 
 
         Ok(())
