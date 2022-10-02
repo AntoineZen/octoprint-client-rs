@@ -1,5 +1,5 @@
-use std::io::{Read, Write};
 use serde_derive::{Deserialize, Serialize};
+use std::io::{Read, Write};
 
 use hyper;
 use hyper::body::Buf;
@@ -126,8 +126,8 @@ pub struct PrinterInfo {
     pub state: Option<PrinterState>,
 }
 
-
-const BONDARY:  &'static str = "----WebKitFormBoundaryNhILabgMzjj9z3Io";
+// TODO: Use something geretated randomly for each request.
+const BONDARY: &'static str = "----WebKitFormBoundaryNhILabgMzjj9z3Io";
 
 impl OctoPrintClient {
     pub fn from_config(config: Configuration) -> Self {
@@ -174,25 +174,34 @@ impl OctoPrintClient {
         Ok(serde_json::from_reader(json_doc.reader())?)
     }
 
-    pub async fn upload(&self, mut file: std::fs::File, file_name : &str) -> Result<()> {
-
+    pub async fn upload(&self, mut file: std::fs::File, file_name: &str) -> Result<()> {
         let mut payload = Vec::new();
 
-        write!(payload, "--{}\r\n", BONDARY )?;
-        write!(payload, "Content-Disposition: form-data; name=\"file\"; filename=\"{}\"\r\n", file_name)?;
+        write!(payload, "--{}\r\n", BONDARY)?;
+        write!(
+            payload,
+            "Content-Disposition: form-data; name=\"file\"; filename=\"{}\"\r\n",
+            file_name
+        )?;
         write!(payload, "Content-Type: text/x.gcode\r\n")?;
         write!(payload, "\r\n")?;
         file.read_to_end(&mut payload)?;
         write!(payload, "\r\n")?;
-        write!(payload, "--{}\r\n", BONDARY )?;
-        write!(payload, "Content-Disposition: form-data; name=\"select\"\r\n")?;
+        write!(payload, "--{}\r\n", BONDARY)?;
+        write!(
+            payload,
+            "Content-Disposition: form-data; name=\"select\"\r\n"
+        )?;
         write!(payload, "\r\n")?;
         write!(payload, "true\r\n")?;
-        write!(payload, "--{}\r\n", BONDARY )?;
-        write!(payload, "Content-Disposition: form-data; name=\"print\"\r\n")?;
+        write!(payload, "--{}\r\n", BONDARY)?;
+        write!(
+            payload,
+            "Content-Disposition: form-data; name=\"print\"\r\n"
+        )?;
         write!(payload, "\r\n")?;
         write!(payload, "false\r\n")?;
-        write!(payload, "--{}--\r\n", BONDARY )?;
+        write!(payload, "--{}--\r\n", BONDARY)?;
 
         let length = payload.len();
 
@@ -200,17 +209,22 @@ impl OctoPrintClient {
             .method(Method::POST)
             .uri(self.config.server_url.clone() + "/api/files/local")
             .header("X-Api-Key", &self.config.api_key)
-            .header("Content-Type", format!("multipart/form-data; boundary={}", BONDARY))
+            .header(
+                "Content-Type",
+                format!("multipart/form-data; boundary={}", BONDARY),
+            )
             .header("Content-Length", length)
             .body(Body::from(payload))?;
 
         let client = Client::new();
         let mut resp = client.request(req).await?;
         if resp.status() != StatusCode::CREATED {
-            eprintln!("{}", hyper::body::aggregate(resp.body_mut()).await?.remaining());
+            eprintln!(
+                "{}",
+                hyper::body::aggregate(resp.body_mut()).await?.remaining()
+            );
             return Err(anyhow!("Server reported error"));
         }
-
 
         Ok(())
     }
