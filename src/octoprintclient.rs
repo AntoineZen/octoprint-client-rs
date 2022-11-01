@@ -6,7 +6,8 @@ use hyper::body::Buf;
 use hyper::{Body, Client, Method, Request, Response, StatusCode};
 
 // type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
-use anyhow::{anyhow, Result};
+
+use thiserror::Error;
 
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]
 pub struct Configuration {
@@ -14,6 +15,7 @@ pub struct Configuration {
     pub api_key: String,
 }
 
+#[derive(Debug)]
 pub struct OctoPrintClient {
     config: Configuration,
 }
@@ -21,7 +23,7 @@ pub struct OctoPrintClient {
 #[derive(Deserialize, Debug)]
 pub struct File {
     pub date: Option<u64>,
-    pub disply: Option<String>,
+    pub display: Option<String>,
     pub name: Option<String>,
     pub origin: Option<String>,
     pub path: Option<String>,
@@ -129,12 +131,26 @@ pub struct PrinterInfo {
 // TODO: Use something geretated randomly for each request.
 const BONDARY: &'static str = "----WebKitFormBoundaryNhILabgMzjj9z3Io";
 
+#[derive(Error, Debug)]
+pub enum OctoPrintClientError {
+    #[error("Server Error")]
+    ServerError(String),
+    #[error("Client Error")]
+    ClientError(#[from] hyper::Error),
+    #[error("HTTP Error")]
+    HttpError(#[from] hyper::http::Error),
+    #[error("JSON decode Error")]
+    JSONDecodeError(#[from] serde_json::Error),
+    #[error("IO Error")]
+    IOError(#[from] std::io::Error),
+}
+
 impl OctoPrintClient {
     pub fn from_config(config: Configuration) -> Self {
         OctoPrintClient { config }
     }
 
-    async fn fetch_url(&self, endpoint: &str) -> Result<Response<Body>> {
+    async fn fetch_url(&self, endpoint: &str) -> Result<Response<Body>, OctoPrintClientError> {
         let full_uri = self.config.server_url.clone() + "/api/" + endpoint;
         let req = Request::builder()
             .method(Method::GET)
@@ -147,34 +163,38 @@ impl OctoPrintClient {
         if resp.status() != StatusCode::OK {
             let error_msg: ErrorMsg =
                 serde_json::from_reader(hyper::body::aggregate(resp.body_mut()).await?.reader())?;
-            return Err(anyhow!("{}", error_msg.error));
+            return Err(OctoPrintClientError::ServerError(error_msg.error));
         }
 
         Ok(resp)
     }
 
-    pub async fn get_current_job(&self) -> Result<JobInformation> {
+    pub async fn get_current_job(&self) -> Result<JobInformation, OctoPrintClientError> {
         let mut resp = self.fetch_url("job").await?;
         let json_doc = hyper::body::aggregate(resp.body_mut()).await?;
 
         Ok(serde_json::from_reader(json_doc.reader())?)
     }
 
-    pub async fn get_server_info(&self) -> Result<ServerInfo> {
+    pub async fn get_server_info(&self) -> Result<ServerInfo, OctoPrintClientError> {
         let mut resp = self.fetch_url("server").await?;
         let json_doc = hyper::body::aggregate(resp.body_mut()).await?;
 
         Ok(serde_json::from_reader(json_doc.reader())?)
     }
 
-    pub async fn get_printer_state(&self) -> Result<PrinterInfo> {
+    pub async fn get_printer_state(&self) -> Result<PrinterInfo, OctoPrintClientError> {
         let mut resp = self.fetch_url("printer").await?;
         let json_doc = hyper::body::aggregate(resp.body_mut()).await?;
 
         Ok(serde_json::from_reader(json_doc.reader())?)
     }
 
-    pub async fn upload(&self, mut file: std::fs::File, file_name: &str) -> Result<()> {
+    pub async fn upload(
+        &self,
+        mut file: std::fs::File,
+        file_name: &str,
+    ) -> Result<(), OctoPrintClientError> {
         let mut payload = Vec::new();
 
         write!(payload, "--{}\r\n", BONDARY)?;
@@ -223,7 +243,7 @@ impl OctoPrintClient {
                 "{}",
                 hyper::body::aggregate(resp.body_mut()).await?.remaining()
             );
-            return Err(anyhow!("Server reported error"));
+            return Err(OctoPrintClientError::ServerError("Server error".into()));
         }
 
         Ok(())

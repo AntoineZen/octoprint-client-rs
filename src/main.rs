@@ -66,7 +66,7 @@ async fn main() -> Result<()> {
             let file_name = sub_matches.value_of("file").unwrap();
             println!("Uploading \"{}\"", file_name);
             let file = std::fs::File::open(file_name)?;
-            opc.upload(file, file_name).await
+            opc.upload(file, file_name).await.with_context(|| "Upload")
         }
         _ => print_state(opc).await,
     }
