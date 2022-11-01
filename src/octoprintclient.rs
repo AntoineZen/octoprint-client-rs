@@ -229,3 +229,28 @@ impl OctoPrintClient {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn get_client() -> OctoPrintClient {
+        /*let c = Configuration {
+            api_key: "".to_string(),
+            server_url: "".to_string()
+        };*/
+
+        OctoPrintClient::from_config(confy::load("octoprint-client").unwrap())
+    }
+
+    #[tokio::test]
+    pub async fn test_get_server_info() {
+        let c = get_client();
+
+        println!("{:?}", c);
+
+        let info = c.get_server_info().await.unwrap();
+
+        assert_eq!(info.version, "1.7.3");
+        assert_eq!(info.safemode, None);
+    }
+}
