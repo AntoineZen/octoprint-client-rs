@@ -1,6 +1,6 @@
 # Octoprint Command line client, written in Rust
 
-This project is a client for [OctopPint](https://octoprint.org/), written in Rust.
+This project is a client for [OctoPrint](https://octoprint.org/), written in Rust.
 Note that there is already an [python cli client](https://pypi.org/project/octoprint-cli/) 
 that has more feature that this project. I use this project as a vessel to practice Rust.
 So for now, if you a looking for a client, you probably want the above client. toto 
