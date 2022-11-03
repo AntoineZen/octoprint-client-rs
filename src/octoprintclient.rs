@@ -314,13 +314,13 @@ mod tests {
     pub async fn test_get_printer_state() {
         let c = get_client();
 
-        let state = c.get_printer_state().await.unwrap();
+        c.get_printer_state().await.unwrap();
     }
 
     #[tokio::test]
     pub async fn test_get_current_job() {
         let c = get_client();
 
-        let state = c.get_current_job().await.unwrap();
+        c.get_current_job().await.unwrap();
     }
 }
