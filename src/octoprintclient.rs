@@ -262,15 +262,65 @@ mod tests {
         OctoPrintClient::from_config(confy::load("octoprint-client").unwrap())
     }
 
+    fn get_client_with_wrong_url() -> OctoPrintClient {
+        let c = Configuration {
+            api_key: "38863B6406FC4C1299E1974FAC6842B4".to_string(),
+            server_url: "http://idontexist.org".to_string(),
+        };
+
+        OctoPrintClient::from_config(c)
+    }
+
+    fn get_client_with_wrong_api_key() -> OctoPrintClient {
+        let c = Configuration {
+            api_key: "abdcasdfasfdasf".to_string(),
+            server_url: "http://localhost".to_string(),
+        };
+
+        OctoPrintClient::from_config(c)
+    }
+
     #[tokio::test]
     pub async fn test_get_server_info() {
         let c = get_client();
 
-        println!("{:?}", c);
+        //println!("{:?}", c);
 
         let info = c.get_server_info().await.unwrap();
 
         assert_eq!(info.version, "1.7.3");
         assert_eq!(info.safemode, None);
+    }
+
+    #[tokio::test]
+    pub async fn test_false_url() {
+        let c = get_client_with_wrong_url();
+        let info_result = c.get_server_info().await;
+        println!("{:?}", info_result);
+
+        assert!(info_result.is_err());
+    }
+
+    #[tokio::test]
+    pub async fn test_false_apikey() {
+        let c = get_client_with_wrong_api_key();
+        let info_result = c.get_server_info().await;
+        println!("{:?}", info_result);
+
+        assert!(info_result.is_err());
+    }
+
+    #[tokio::test]
+    pub async fn test_get_printer_state() {
+        let c = get_client();
+
+        let state = c.get_printer_state().await.unwrap();
+    }
+
+    #[tokio::test]
+    pub async fn test_get_current_job() {
+        let c = get_client();
+
+        let state = c.get_current_job().await.unwrap();
     }
 }
