@@ -8,8 +8,8 @@ use time_humanize::HumanTime;
 mod octoprintclient;
 use octoprintclient::{Configuration, OctoPrintClient};
 
-#[tokio::main]
-async fn main() -> Result<()> {
+
+async fn get_configuration() -> Result<Configuration> {
     // Try to get configuration using "confy"
     let cfg: Configuration =
         confy::load("octoprint-client").context("Configuration loading failed")?;
@@ -29,18 +29,27 @@ async fn main() -> Result<()> {
         new_config.api_key = Input::new().with_prompt("API Key").interact_text()?;
 
         // Test configuration by getting server info.
-        return match OctoPrintClient::from_config(new_config.clone())
+        match OctoPrintClient::from_config(new_config.clone())
             .get_server_info()
             .await
         {
             Ok(info) => {
                 println!("Connected to Octoprint version {}.", info.version);
                 confy::store("octoprint-client", new_config).expect("Failed to save configuration");
-                Ok(())
+                Ok(cfg)
             }
             Err(e) => Err(anyhow!("Connection failed: {}", e)),
-        };
+        }
     }
+    else {
+        Ok(cfg)
+    }
+}
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    // Try to get configuration using "confy"
+    let cfg = get_configuration().await?;
 
     // Parse command line
     let matches = command!()
@@ -49,6 +58,9 @@ async fn main() -> Result<()> {
                 .about("Upload a file to Octoprint instance")
                 .arg(Arg::new("dir").short('d').help("Specify upload dir"))
                 .arg(Arg::new("file").required(true).help("File to upload")),
+        )
+        .subcommand(
+            Command::new("conn")
         )
         .get_matches();
 
@@ -67,6 +79,9 @@ async fn main() -> Result<()> {
             println!("Uploading \"{}\"", file_name);
             let file = std::fs::File::open(file_name)?;
             opc.upload(file, file_name).await.with_context(|| "Upload")
+        }
+        Some(("conn", _)) => {
+            print_connection(opc).await
         }
         _ => print_state(opc).await,
     }
@@ -137,5 +152,40 @@ async fn print_state(opc: OctoPrintClient) -> Result<()> {
         }
     }
 
+    Ok(())
+}
+
+
+async fn print_connection(opc: OctoPrintClient) -> Result<()> {
+
+    let conn = opc.get_connection().await?;
+
+    println!("Connection State : {}", conn.current.state);
+    for profile in &conn.options.printer_profiles {
+        if conn.current.printer_profile == profile.id {
+            println!("Current Profile : {}", profile.name);
+        }
+    }
+
+    if let Some(port) = conn.current.port {
+        println!("Port : {}", port);
+        if let Some(baudrate) = conn.current.baudrate {
+            println!("Baudrate : {}", baudrate);
+        }
+    } else {
+        println!("Available ports: ");
+        for p in conn.options.ports {
+            println!(" - {}", p);
+        }
+        println!("Available baudrates: ");
+        for br in conn.options.baudrates {
+            println!(" - {}", br);
+        }
+
+        println!("Available profiles: ");
+        for profile in conn.options.printer_profiles {
+            println!(" - {}", profile.name);
+        }
+    }
     Ok(())
 }

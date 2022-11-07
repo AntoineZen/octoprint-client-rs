@@ -5,128 +5,14 @@ use hyper;
 use hyper::body::Buf;
 use hyper::{Body, Client, Method, Request, Response, StatusCode};
 
+pub mod datamodel;
+
+use self::datamodel::*;
+
 // type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
 use thiserror::Error;
 
-#[derive(Default, Clone, Debug, Serialize, Deserialize)]
-pub struct Configuration {
-    pub server_url: String,
-    pub api_key: String,
-}
-
-#[derive(Debug)]
-pub struct OctoPrintClient {
-    config: Configuration,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct File {
-    pub date: Option<u64>,
-    pub display: Option<String>,
-    pub name: Option<String>,
-    pub origin: Option<String>,
-    pub path: Option<String>,
-    pub size: Option<u32>,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct Tool {
-    pub length: f32,
-    pub volume: f32,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct Filament {
-    pub tool0: Option<Tool>,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct Job {
-    pub file: File,
-    #[serde(rename = "estimatedPrintTime")]
-    pub estimated_print_time: Option<f32>,
-    #[serde(rename = "lastPrintTime")]
-    pub last_print_time: Option<f32>,
-    pub filament: Option<Filament>,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct Progress {
-    pub completion: Option<f32>,
-    pub filepos: Option<u32>,
-    #[serde(rename = "printTime")]
-    pub print_time: Option<u32>,
-    #[serde(rename = "printTimeLeft")]
-    pub print_time_left: Option<i64>,
-    #[serde(rename = "printTimeLeftOrigin")]
-    pub print_time_left_origin: Option<String>,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct JobInformation {
-    pub job: Job,
-    pub progress: Progress,
-    pub state: String,
-    pub error: Option<String>,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct ServerInfo {
-    pub version: String,
-    pub safemode: Option<String>,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct ErrorMsg {
-    pub error: String,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct TemperatureState {
-    pub tool0: Option<TemperatureData>,
-    pub bed: Option<TemperatureData>,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct TemperatureData {
-    pub actual: f32,
-    pub target: f32,
-    pub offset: Option<f32>,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct SDState {
-    pub ready: bool,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct PrinterState {
-    text: String,
-    error: Option<String>,
-    flags: PrinterFlags,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct PrinterFlags {
-    pub operational: bool,
-    pub paused: bool,
-    pub printing: bool,
-    pub pausing: bool,
-    pub cancelling: bool,
-    #[serde(rename = "sdReady")]
-    pub sd_ready: bool,
-    pub error: bool,
-    pub ready: bool,
-    #[serde(rename = "closedOrError")]
-    pub closed_on_error: bool,
-}
-#[derive(Deserialize, Debug)]
-pub struct PrinterInfo {
-    pub temperature: Option<TemperatureState>,
-    pub sd: Option<SDState>,
-    pub state: Option<PrinterState>,
-}
 
 // TODO: Use something geretated randomly for each request.
 const BONDARY: &'static str = "----WebKitFormBoundaryNhILabgMzjj9z3Io";
@@ -144,6 +30,19 @@ pub enum OctoPrintClientError {
     #[error("IO Error")]
     IOError(#[from] std::io::Error),
 }
+
+#[derive(Default, Clone, Debug, Serialize, Deserialize)]
+pub struct Configuration {
+    pub server_url: String,
+    pub api_key: String,
+}
+
+
+#[derive(Debug)]
+pub struct OctoPrintClient {
+    config: Configuration,
+}
+
 
 impl OctoPrintClient {
     pub fn from_config(config: Configuration) -> Self {
@@ -246,6 +145,37 @@ impl OctoPrintClient {
             return Err(OctoPrintClientError::ServerError("Server error".into()));
         }
 
+        Ok(())
+    }
+
+    pub async fn get_connection(&self)  -> Result<PrinterConnection, OctoPrintClientError> {
+        let mut resp = self.fetch_url("connection").await?;
+        let json_doc = hyper::body::aggregate(resp.body_mut()).await?;
+
+        Ok(serde_json::from_reader(json_doc.reader())?)
+    }
+
+    pub async fn connect(&self, cmd: &ConnectionCommand) -> Result<(), OctoPrintClientError> {
+
+        let req = Request::builder()
+        .method(Method::POST)
+        .uri(self.config.server_url.clone() + "/api/connection")
+        .header("X-Api-Key", &self.config.api_key)
+        .header(
+            "Content-Type",
+            "application/json"
+        )
+        .body(Body::from(serde_json::to_string(cmd)?))?;
+
+        let client = Client::new();
+        let mut resp = client.request(req).await?;
+        if resp.status() != StatusCode::CREATED {
+            eprintln!(
+                "{}",
+                hyper::body::aggregate(resp.body_mut()).await?.remaining()
+            );
+            return Err(OctoPrintClientError::ServerError("Server error".into()));
+        }
         Ok(())
     }
 }
