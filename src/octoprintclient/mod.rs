@@ -162,7 +162,29 @@ impl OctoPrintClient {
 
         let client = Client::new();
         let mut resp = client.request(req).await?;
-        if resp.status() != StatusCode::CREATED {
+        if resp.status() != StatusCode::NO_CONTENT {
+            eprintln!(
+                "{}",
+                hyper::body::aggregate(resp.body_mut()).await?.remaining()
+            );
+            return Err(OctoPrintClientError::ServerError("Server error".into()));
+        }
+        Ok(())
+    }
+
+    pub async fn disconnect(&self) -> Result<(), OctoPrintClientError> {
+        let req = Request::builder()
+            .method(Method::POST)
+            .uri(self.config.server_url.clone() + "/api/connection")
+            .header("X-Api-Key", &self.config.api_key)
+            .header("Content-Type", "application/json")
+            .body(Body::from(serde_json::to_string(
+                &DisconnectCommand::default(),
+            )?))?;
+
+        let client = Client::new();
+        let mut resp = client.request(req).await?;
+        if resp.status() != StatusCode::NO_CONTENT {
             eprintln!(
                 "{}",
                 hyper::body::aggregate(resp.body_mut()).await?.remaining()
@@ -263,5 +285,39 @@ mod tests {
         let c = get_client();
 
         c.get_current_job().await.unwrap();
+    }
+
+    #[tokio::test]
+    pub async fn test_connect_disconnect() {
+        let c = get_client();
+
+        let connection_info = c.get_connection().await.unwrap();
+
+        let connect_cmd = ConnectionCommand {
+            command: "connect".to_string(),
+            port: Some("VIRTUAL".to_string()),
+            baudrate: Some(115200),
+            printer_profile: Some(connection_info.options.printer_profile_preference), //Some("_default".to_string()),
+            save: Some(true),
+            autoconnect: Some(false),
+        };
+
+        c.connect(&connect_cmd).await.unwrap();
+
+        std::thread::sleep(std::time::Duration::from_secs(2));
+
+        let connection_info = c.get_connection().await.unwrap();
+
+        assert_eq!(connection_info.current.state, "Operational");
+
+        c.disconnect().await.unwrap();
+
+        std::thread::sleep(std::time::Duration::from_secs(2));
+
+        let connection_info = c.get_connection().await.unwrap();
+
+        println!("connection info : {:?}", connection_info);
+
+        assert_eq!(connection_info.current.state, "Closed");
     }
 }

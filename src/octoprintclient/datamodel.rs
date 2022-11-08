@@ -148,11 +148,24 @@ pub struct PrinterConnection {
 #[derive(Serialize, Debug)]
 
 pub struct ConnectionCommand {
-    command: String,
-    port: Option<String>,
-    baudrate: Option<u32>,
+    pub command: String,
+    pub port: Option<String>,
+    pub baudrate: Option<u32>,
     #[serde(rename = "printerProfile")]
-    printer_rofile: Option<String>,
-    save: Option<bool>,
-    autoconnect: Option<bool>,
+    pub printer_profile: Option<String>,
+    pub save: Option<bool>,
+    pub autoconnect: Option<bool>,
+}
+
+#[derive(Serialize, Debug)]
+pub struct DisconnectCommand {
+    pub command: String,
+}
+
+impl DisconnectCommand {
+    pub fn default() -> Self {
+        DisconnectCommand {
+            command: "disconnect".to_string(),
+        }
+    }
 }
