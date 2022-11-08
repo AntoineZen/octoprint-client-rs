@@ -13,7 +13,6 @@ use self::datamodel::*;
 
 use thiserror::Error;
 
-
 // TODO: Use something geretated randomly for each request.
 const BONDARY: &'static str = "----WebKitFormBoundaryNhILabgMzjj9z3Io";
 
@@ -37,12 +36,10 @@ pub struct Configuration {
     pub api_key: String,
 }
 
-
 #[derive(Debug)]
 pub struct OctoPrintClient {
     config: Configuration,
 }
-
 
 impl OctoPrintClient {
     pub fn from_config(config: Configuration) -> Self {
@@ -148,7 +145,7 @@ impl OctoPrintClient {
         Ok(())
     }
 
-    pub async fn get_connection(&self)  -> Result<PrinterConnection, OctoPrintClientError> {
+    pub async fn get_connection(&self) -> Result<PrinterConnection, OctoPrintClientError> {
         let mut resp = self.fetch_url("connection").await?;
         let json_doc = hyper::body::aggregate(resp.body_mut()).await?;
 
@@ -156,16 +153,12 @@ impl OctoPrintClient {
     }
 
     pub async fn connect(&self, cmd: &ConnectionCommand) -> Result<(), OctoPrintClientError> {
-
         let req = Request::builder()
-        .method(Method::POST)
-        .uri(self.config.server_url.clone() + "/api/connection")
-        .header("X-Api-Key", &self.config.api_key)
-        .header(
-            "Content-Type",
-            "application/json"
-        )
-        .body(Body::from(serde_json::to_string(cmd)?))?;
+            .method(Method::POST)
+            .uri(self.config.server_url.clone() + "/api/connection")
+            .header("X-Api-Key", &self.config.api_key)
+            .header("Content-Type", "application/json")
+            .body(Body::from(serde_json::to_string(cmd)?))?;
 
         let client = Client::new();
         let mut resp = client.request(req).await?;
@@ -183,13 +176,31 @@ impl OctoPrintClient {
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn get_client() -> OctoPrintClient {
-        /*let c = Configuration {
-            api_key: "".to_string(),
-            server_url: "".to_string()
-        };*/
+    use std::process::Command;
 
-        OctoPrintClient::from_config(confy::load("octoprint-client").unwrap())
+    fn get_apikey() -> String {
+        let buffer = Command::new("./tests/get-apikey.sh")
+            .output()
+            .unwrap()
+            .stdout;
+
+        let raw_api_key = String::from_utf8(buffer).unwrap();
+        let clean_api_key = raw_api_key
+            .strip_suffix("\n")
+            .unwrap_or(raw_api_key.as_str());
+
+        clean_api_key.into()
+    }
+
+    fn get_client() -> OctoPrintClient {
+        let c = Configuration {
+            api_key: get_apikey(),
+            server_url: "http://localhost".to_string(),
+        };
+        println!("Config: {:?}", c);
+
+        //OctoPrintClient::from_config(confy::load("octoprint-client").unwrap())
+        OctoPrintClient::from_config(c)
     }
 
     fn get_client_with_wrong_url() -> OctoPrintClient {

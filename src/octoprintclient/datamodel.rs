@@ -1,10 +1,6 @@
-
-
 #![allow(dead_code)]
 
 use serde_derive::{Deserialize, Serialize};
-
-
 
 #[derive(Deserialize, Debug)]
 pub struct File {
@@ -145,7 +141,7 @@ pub struct ConnectionOptions {
 
 #[derive(Deserialize, Debug)]
 pub struct PrinterConnection {
-    pub current : CurrentConnection,
+    pub current: CurrentConnection,
     pub options: ConnectionOptions,
 }
 
@@ -159,4 +155,4 @@ pub struct ConnectionCommand {
     printer_rofile: Option<String>,
     save: Option<bool>,
     autoconnect: Option<bool>,
-  }
+}

@@ -8,7 +8,6 @@ use time_humanize::HumanTime;
 mod octoprintclient;
 use octoprintclient::{Configuration, OctoPrintClient};
 
-
 async fn get_configuration() -> Result<Configuration> {
     // Try to get configuration using "confy"
     let cfg: Configuration =
@@ -40,8 +39,7 @@ async fn get_configuration() -> Result<Configuration> {
             }
             Err(e) => Err(anyhow!("Connection failed: {}", e)),
         }
-    }
-    else {
+    } else {
         Ok(cfg)
     }
 }
@@ -59,9 +57,7 @@ async fn main() -> Result<()> {
                 .arg(Arg::new("dir").short('d').help("Specify upload dir"))
                 .arg(Arg::new("file").required(true).help("File to upload")),
         )
-        .subcommand(
-            Command::new("conn")
-        )
+        .subcommand(Command::new("conn"))
         .get_matches();
 
     // Create the client object
@@ -80,9 +76,7 @@ async fn main() -> Result<()> {
             let file = std::fs::File::open(file_name)?;
             opc.upload(file, file_name).await.with_context(|| "Upload")
         }
-        Some(("conn", _)) => {
-            print_connection(opc).await
-        }
+        Some(("conn", _)) => print_connection(opc).await,
         _ => print_state(opc).await,
     }
 }
@@ -155,9 +149,7 @@ async fn print_state(opc: OctoPrintClient) -> Result<()> {
     Ok(())
 }
 
-
 async fn print_connection(opc: OctoPrintClient) -> Result<()> {
-
     let conn = opc.get_connection().await?;
 
     println!("Connection State : {}", conn.current.state);
