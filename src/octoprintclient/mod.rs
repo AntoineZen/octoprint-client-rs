@@ -172,6 +172,54 @@ impl OctoPrintClient {
         Ok(())
     }
 
+    pub async fn connect_default(&self) -> Result<(), OctoPrintClientError> {
+        let conn_state = self.get_connection().await?;
+        let br =
+            conn_state
+                .options
+                .baudrate_preference
+                .ok_or(OctoPrintClientError::ServerError(
+                    "No default baudrate stored in server".to_string(),
+                ))?;
+        let port = conn_state
+            .options
+            .port_preference
+            .ok_or(OctoPrintClientError::ServerError(
+                "No default port stored in server".to_string(),
+            ))?;
+
+        let profile = conn_state.options.printer_profile_preference.ok_or(
+            OctoPrintClientError::ServerError("No default port stored in server".to_string()),
+        )?;
+
+        let connect_cmd = ConnectionCommand {
+            command: "connect".to_string(),
+            port: Some(port),
+            baudrate: Some(br),
+            printer_profile: Some(profile), //Some("_default".to_string()),
+            save: Some(true),
+            autoconnect: Some(false),
+        };
+
+        let req = Request::builder()
+            .method(Method::POST)
+            .uri(self.config.server_url.clone() + "/api/connection")
+            .header("X-Api-Key", &self.config.api_key)
+            .header("Content-Type", "application/json")
+            .body(Body::from(serde_json::to_string(&connect_cmd)?))?;
+
+        let client = Client::new();
+        let mut resp = client.request(req).await?;
+        if resp.status() != StatusCode::NO_CONTENT {
+            eprintln!(
+                "{}",
+                hyper::body::aggregate(resp.body_mut()).await?.remaining()
+            );
+            return Err(OctoPrintClientError::ServerError("Server error".into()));
+        }
+        Ok(())
+    }
+
     pub async fn disconnect(&self) -> Result<(), OctoPrintClientError> {
         let req = Request::builder()
             .method(Method::POST)
@@ -277,6 +325,8 @@ mod tests {
     pub async fn test_get_printer_state() {
         let c = get_client();
 
+        c.connect_default().await.unwrap();
+
         c.get_printer_state().await.unwrap();
     }
 
@@ -297,7 +347,7 @@ mod tests {
             command: "connect".to_string(),
             port: Some("VIRTUAL".to_string()),
             baudrate: Some(115200),
-            printer_profile: Some(connection_info.options.printer_profile_preference), //Some("_default".to_string()),
+            printer_profile: Some(connection_info.options.printer_profile_preference).unwrap(), //Some("_default".to_string()),
             save: Some(true),
             autoconnect: Some(false),
         };

@@ -1,11 +1,12 @@
 use anyhow::{anyhow, Context, Result};
-use clap::{command, Arg, Command};
+use clap::{command, value_parser, Arg, ArgAction, Command};
 use confy;
 use console::Style;
 use dialoguer::Input;
 use time_humanize::HumanTime;
 
 mod octoprintclient;
+use octoprintclient::datamodel::ConnectionCommand;
 use octoprintclient::{Configuration, OctoPrintClient};
 
 async fn get_configuration() -> Result<Configuration> {
@@ -57,7 +58,34 @@ async fn main() -> Result<()> {
                 .arg(Arg::new("dir").short('d').help("Specify upload dir"))
                 .arg(Arg::new("file").required(true).help("File to upload")),
         )
-        .subcommand(Command::new("conn"))
+        .subcommand(Command::new("connection").about("Print printer connection state"))
+        .subcommand(
+            Command::new("connect")
+                .about("Connect to printer (open serial connection)")
+                .arg(
+                    Arg::new("port")
+                        .short('p')
+                        .long("port")
+                        .help("Specify serial port"),
+                )
+                .arg(
+                    Arg::new("baudrate")
+                        .short('b')
+                        .long("baudrate")
+                        .help("Set baudrate")
+                        .value_parser(value_parser!(u32))
+                        .action(ArgAction::Set),
+                )
+                .arg(
+                    Arg::new("profile")
+                        .short('t')
+                        .long("profile")
+                        .help("Select profile (must exists)"),
+                ),
+        )
+        .subcommand(
+            Command::new("disconnect").about("Disconnect from printer (close serial connection)"),
+        )
         .get_matches();
 
     // Create the client object
@@ -71,12 +99,53 @@ async fn main() -> Result<()> {
 
     match matches.subcommand() {
         Some(("upload", sub_matches)) => {
-            let file_name = sub_matches.value_of("file").unwrap();
+            let file_name = sub_matches
+                .get_one::<String>("file")
+                .ok_or(anyhow!("Bad file name given"))?;
             println!("Uploading \"{}\"", file_name);
             let file = std::fs::File::open(file_name)?;
             opc.upload(file, file_name).await.with_context(|| "Upload")
         }
-        Some(("conn", _)) => print_connection(opc).await,
+        Some(("connection", _)) => print_connection(opc).await,
+        Some(("connect", sub_match)) => {
+            let conn_state = opc.get_connection().await?;
+            let br: u32 = if let Some(baudrate) = sub_match.get_one::<u32>("baudrate") {
+                *baudrate
+            } else {
+                conn_state
+                    .options
+                    .baudrate_preference
+                    .ok_or(anyhow!("No default baudrate stored in server"))?
+            };
+            let port = if let Some(port) = sub_match.get_one::<String>("port") {
+                port.to_string()
+            } else {
+                conn_state
+                    .options
+                    .port_preference
+                    .ok_or(anyhow!("No default port stored in server"))?
+            };
+
+            let profile = if let Some(profile) = sub_match.get_one::<String>("profile") {
+                profile.to_string()
+            } else {
+                conn_state
+                    .options
+                    .printer_profile_preference
+                    .ok_or(anyhow!("No default port stored in server"))?
+            };
+
+            let connect_cmd = ConnectionCommand {
+                command: "connect".to_string(),
+                port: Some(port),
+                baudrate: Some(br),
+                printer_profile: Some(profile), //Some("_default".to_string()),
+                save: Some(true),
+                autoconnect: Some(false),
+            };
+            opc.connect(&connect_cmd).await.with_context(|| "Connect")
+        }
+        Some(("disconnect", _)) => opc.disconnect().await.with_context(|| "Disconnect"),
         _ => print_state(opc).await,
     }
 }

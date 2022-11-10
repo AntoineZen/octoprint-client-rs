@@ -9,9 +9,9 @@ So for now, if you a looking for a client, you probably want the above client. t
 
  - [x] Show server state.
  - [X] Upload G-Code file to Octoprint.
- - [ ] Unit-tests.
+ - [X] Unit-tests.
  - [ ] Start/Stop/Pause prints.
- - [ ] Connect / Disconnect printer.
+ - [X] Connect / Disconnect printer.
  - [ ] Set extruder / bed temperatures.
  - [ ] List files.
  - [ ] Delete file.

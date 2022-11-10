@@ -134,7 +134,7 @@ pub struct ConnectionOptions {
     pub port_preference: Option<String>,
     pub ports: Vec<String>,
     #[serde(rename = "printerProfilePreference")]
-    pub printer_profile_preference: String,
+    pub printer_profile_preference: Option<String>,
     #[serde(rename = "printerProfiles")]
     pub printer_profiles: Vec<PrinterProfile>,
 }
