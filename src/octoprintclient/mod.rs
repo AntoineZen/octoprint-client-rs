@@ -299,7 +299,7 @@ mod tests {
 
         let info = c.get_server_info().await.unwrap();
 
-        assert_eq!(info.version, "1.7.3");
+        assert_eq!(info.version, "1.8.6");
         assert_eq!(info.safemode, None);
     }
 
