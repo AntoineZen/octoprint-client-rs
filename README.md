@@ -1,5 +1,7 @@
 # Octoprint Command line client, written in Rust
 
+![Workflow status](https://github.com/AntoineZen/octoprint-client-rs/actions/workflows/rust.yml/badge.svg)
+
 This project is a client for [OctoPrint](https://octoprint.org/), written in Rust.
 Note that there is already an [python cli client](https://pypi.org/project/octoprint-cli/) 
 that has more feature that this project. I use this project as a vessel to practice Rust.
