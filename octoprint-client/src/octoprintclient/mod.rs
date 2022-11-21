@@ -249,7 +249,7 @@ mod tests {
     use std::process::Command;
 
     fn get_apikey() -> String {
-        let buffer = Command::new("./tests/get-apikey.sh")
+        let buffer = Command::new("../tests/get-apikey.sh")
             .output()
             .unwrap()
             .stdout;
