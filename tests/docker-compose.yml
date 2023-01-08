@@ -12,7 +12,7 @@ services:
     #  - /dev/video0:/dev/video0
     volumes:
       - type: bind
-        source: $PWD/data
+        source: $PWD/tests/data
         target: /octoprint
     # uncomment the lines below to ensure camera streaming is enabled when
     # you add a video device

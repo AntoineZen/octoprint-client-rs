@@ -249,7 +249,7 @@ mod tests {
     use std::process::Command;
 
     fn get_apikey() -> String {
-        let buffer = Command::new("./tests/get-apikey.sh")
+        let buffer = Command::new("../tests/get-apikey.sh")
             .output()
             .unwrap()
             .stdout;
@@ -326,6 +326,7 @@ mod tests {
         let c = get_client();
 
         c.connect_default().await.unwrap();
+        std::thread::sleep(std::time::Duration::from_secs(2));
 
         c.get_printer_state().await.unwrap();
     }
