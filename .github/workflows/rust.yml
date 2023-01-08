@@ -15,8 +15,8 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Prepare env
-      run: ./tests/prepare-server.sh
+      run: cargo xtask start-server
     - name: Run tests
       run: cargo test
     - name: Clear env
-      run: ./tests/shutdown-server.sh
+      run: cargo xtask shutdown-server
